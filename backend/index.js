@@ -1,23 +1,52 @@
-require('dotenv').config();
-const express = require('express');
-const mongoose = require('mongoose');
-const cors = require('cors');
-const apiRoutes = require('./src/routes/api');
+require("dotenv").config();
+
+const express = require("express");
+const mongoose = require("mongoose");
+const cors = require("cors");
+
+const apiRoutes = require("./src/routes/api");
 
 const app = express();
-app.use(cors());
+
+app.use(
+  cors({
+    origin: true,
+    credentials: true,
+  })
+);
+
 app.use(express.json());
 
-app.use('/api', apiRoutes);
+app.use("/api", apiRoutes);
 
-const PORT = process.env.PORT || 5000;
-const MONGO_URI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/ethara-seats';
+// Health Check
+app.get("/", (req, res) => {
+  res.json({
+    success: true,
+    message: "Ethara Backend Running 🚀",
+  });
+});
 
-mongoose.connect(MONGO_URI)
-  .then(() => {
-    console.log('Connected to MongoDB');
-    app.listen(PORT, () => {
-      console.log(`Server running on port ${PORT}`);
-    });
-  })
-  .catch(err => console.error('MongoDB connection error:', err));
+let cached = global.mongoose;
+
+if (!cached) {
+  cached = global.mongoose = { conn: null, promise: null };
+}
+
+async function connectDB() {
+  if (cached.conn) return cached.conn;
+
+  if (!cached.promise) {
+    cached.promise = mongoose
+      .connect(process.env.MONGO_URI)
+      .then((mongoose) => mongoose);
+  }
+
+  cached.conn = await cached.promise;
+  return cached.conn;
+}
+
+module.exports = async (req, res) => {
+  await connectDB();
+  return app(req, res);
+};
