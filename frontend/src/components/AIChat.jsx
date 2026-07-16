@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Bot, MessageSquare, X } from 'lucide-react';
+import api from '../api/axios';
 
 const AIChat = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -28,12 +29,8 @@ const AIChat = () => {
     setIsLoading(true);
 
     try {
-      const response = await fetch('http://localhost:5000/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: userMessage.text })
-      });
-      const data = await response.json();
+      const response = await api.post('/api/chat', { query: userMessage.text });
+      const data = response.data;
       
       setMessages(prev => [...prev, { id: Date.now(), text: data.reply, sender: 'bot' }]);
     } catch (err) {

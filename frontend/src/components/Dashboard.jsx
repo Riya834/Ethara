@@ -7,6 +7,7 @@ import {
   ChevronLeft, 
   ChevronRight 
 } from "lucide-react";
+import api from "../api/axios";
 
 function Dashboard() {
   const [search, setSearch] = useState("");
@@ -16,10 +17,9 @@ function Dashboard() {
 
   // Fetch real-time statistics from the API
   useEffect(() => {
-    fetch('http://localhost:5000/api/stats')
-      .then(res => res.json())
-      .then(data => {
-        setStats(data);
+    api.get('/api/stats')
+      .then(res => {
+        setStats(res.data);
         setLoading(false);
       })
       .catch(err => {

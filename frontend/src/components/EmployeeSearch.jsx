@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Search, ChevronLeft, ChevronRight, CalendarClock } from 'lucide-react';
+import api from '../api/axios';
 
 const EmployeeSearch = ({ onNavigate, setSelectedEmployee }) => {
   const [employees, setEmployees] = useState([]);
@@ -12,26 +13,19 @@ const EmployeeSearch = ({ onNavigate, setSelectedEmployee }) => {
   const handleDeallocate = async (userId) => {
     if (!window.confirm("Are you sure you want to deallocate this employee's seat?")) return;
     try {
-      const res = await fetch('http://localhost:5000/api/deallocate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId })
-      });
-      if (res.ok) {
-        fetchEmployees(searchTerm, page);
-      } else {
-        alert("Failed to deallocate seat");
-      }
+      await api.post('/api/deallocate', { userId });
+      fetchEmployees(searchTerm, page);
     } catch (err) {
       console.error(err);
+      alert("Failed to deallocate seat");
     }
   };
 
   const fetchEmployees = (searchQuery = '', pageNum = 1) => {
     setLoading(true);
-    fetch(`http://localhost:5000/api/employees?search=${searchQuery}&page=${pageNum}&limit=15`)
-      .then(res => res.json())
-      .then(data => {
+    api.get(`/api/employees?search=${searchQuery}&page=${pageNum}&limit=15`)
+      .then(res => {
+        const data = res.data;
         setEmployees(data.employees);
         setTotalPages(data.totalPages);
         setPage(data.currentPage);

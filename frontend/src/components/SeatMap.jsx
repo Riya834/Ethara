@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { User, Briefcase, CalendarClock, CheckCircle, Info } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import api from '../api/axios';
 
 const SeatMap = () => {
   const [seats, setSeats] = useState([]);
@@ -11,10 +12,9 @@ const SeatMap = () => {
 
   useEffect(() => {
     setLoading(true);
-    fetch(`http://localhost:5000/api/seats?floor=${selectedFloor}&zone=${selectedZone}`)
-      .then(res => res.json())
-      .then(data => {
-        setSeats(data);
+    api.get(`/api/seats?floor=${selectedFloor}&zone=${selectedZone}`)
+      .then(res => {
+        setSeats(res.data);
         setLoading(false);
         setSelectedSeat(null); // Reset selection on floor/zone change
       })
@@ -27,22 +27,14 @@ const SeatMap = () => {
   const handleDeallocate = async (seatId) => {
     if (!window.confirm("Are you sure you want to deallocate this seat?")) return;
     try {
-      const res = await fetch('http://localhost:5000/api/deallocate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ seatId })
-      });
-      if (res.ok) {
-        // Re-fetch the seats from the server to update the grid
-        const response = await fetch(`http://localhost:5000/api/seats?floor=${selectedFloor}&zone=${selectedZone}`);
-        const data = await response.json();
-        setSeats(data);
-        setSelectedSeat(null); // Clear selection
-      } else {
-        alert("Failed to deallocate seat");
-      }
+      await api.post('/api/deallocate', { seatId });
+      // Re-fetch the seats from the server to update the grid
+      const response = await api.get(`/api/seats?floor=${selectedFloor}&zone=${selectedZone}`);
+      setSeats(response.data);
+      setSelectedSeat(null); // Clear selection
     } catch (err) {
       console.error(err);
+      alert("Failed to deallocate seat");
     }
   };
 

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { UserPlus, Search, CheckCircle } from 'lucide-react';
+import api from '../api/axios';
 
 const AllocateSeat = ({ selectedEmployee }) => {
   const [employees, setEmployees] = useState([]);
@@ -25,19 +26,14 @@ const AllocateSeat = ({ selectedEmployee }) => {
     if (!selectedUser || !selectedUser.seat) return;
     if (!window.confirm(`Are you sure you want to deallocate ${selectedUser.name}'s current seat?`)) return;
     try {
-      const res = await fetch('http://localhost:5000/api/deallocate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: selectedUser._id })
-      });
-      if (res.ok) {
+      const res = await api.post('/api/deallocate', { userId: selectedUser._id });
+      if (res.status === 200) {
         setMessage({ text: `Successfully deallocated current seat for ${selectedUser.name}`, type: 'success' });
         setSelectedUser({ ...selectedUser, seat: null });
         // Re-fetch seats for selected floor/zone
-        fetch(`http://localhost:5000/api/seats?floor=${floor}&zone=${zone}`)
-          .then(res => res.json())
-          .then(data => {
-            const sorted = data.sort((a, b) => {
+        api.get(`/api/seats?floor=${floor}&zone=${zone}`)
+          .then(res => {
+            const sorted = res.data.sort((a, b) => {
               const numA = parseInt(a.seatNumber.split('-')[1]) || 0;
               const numB = parseInt(b.seatNumber.split('-')[1]) || 0;
               return numA - numB;
@@ -57,11 +53,10 @@ const AllocateSeat = ({ selectedEmployee }) => {
   const searchEmployees = (e) => {
     e.preventDefault();
     setLoading(true);
-    fetch(`http://localhost:5000/api/employees?search=${searchTerm}&limit=10`)
-      .then(res => res.json())
-      .then(data => {
+    api.get(`/api/employees?search=${searchTerm}&limit=10`)
+      .then(res => {
         // Filter those who don't have a seat or let HR reassign them
-        setEmployees(data.employees);
+        setEmployees(res.data.employees);
         setLoading(false);
       })
       .catch(err => setLoading(false));
@@ -70,10 +65,9 @@ const AllocateSeat = ({ selectedEmployee }) => {
   // Fetch initial employees on mount
   useEffect(() => {
     setLoading(true);
-    fetch(`http://localhost:5000/api/employees?limit=10`)
-      .then(res => res.json())
-      .then(data => {
-        setEmployees(data.employees);
+    api.get(`/api/employees?limit=10`)
+      .then(res => {
+        setEmployees(res.data.employees);
         setLoading(false);
       })
       .catch(err => setLoading(false));
@@ -81,10 +75,9 @@ const AllocateSeat = ({ selectedEmployee }) => {
 
   // Fetch seats for selected floor/zone
   useEffect(() => {
-    fetch(`http://localhost:5000/api/seats?floor=${floor}&zone=${zone}`)
-      .then(res => res.json())
-      .then(data => {
-        const sorted = data.sort((a, b) => {
+    api.get(`/api/seats?floor=${floor}&zone=${zone}`)
+      .then(res => {
+        const sorted = res.data.sort((a, b) => {
           const numA = parseInt(a.seatNumber.split('-')[1]) || 0;
           const numB = parseInt(b.seatNumber.split('-')[1]) || 0;
           return numA - numB;
@@ -99,29 +92,21 @@ const AllocateSeat = ({ selectedEmployee }) => {
     
     setLoading(true);
     try {
-      const res = await fetch('http://localhost:5000/api/allocate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: selectedUser._id, seatId: selectedSeat._id })
-      });
-      const data = await res.json();
+      const res = await api.post('/api/allocate', { userId: selectedUser._id, seatId: selectedSeat._id });
+      const data = res.data;
       
-      if (res.ok) {
-        setMessage({ type: 'success', text: `Successfully allocated Seat ${selectedSeat.seatNumber} to ${selectedUser.name}` });
-        
-        // Re-fetch the seats from the server to ensure the old seat is shown as Available
-        fetch(`http://localhost:5000/api/seats?floor=${floor}&zone=${zone}`)
-          .then(res => res.json())
-          .then(data => setSeats(data))
-          .catch(console.error);
+      setMessage({ type: 'success', text: `Successfully allocated Seat ${selectedSeat.seatNumber} to ${selectedUser.name}` });
+      
+      // Re-fetch the seats from the server to ensure the old seat is shown as Available
+      api.get(`/api/seats?floor=${floor}&zone=${zone}`)
+        .then(res => setSeats(res.data))
+        .catch(console.error);
 
-        setSelectedUser(null);
-        setSelectedSeat(null);
-      } else {
-        setMessage({ type: 'error', text: data.error });
-      }
+      setSelectedUser(null);
+      setSelectedSeat(null);
     } catch (err) {
-      setMessage({ type: 'error', text: 'Server error' });
+      const errorMsg = err.response?.data?.error || 'Server error';
+      setMessage({ type: 'error', text: errorMsg });
     }
     setLoading(false);
   };
